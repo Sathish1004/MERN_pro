@@ -1,0 +1,55 @@
+import axios from "axios";
+import { API_BASE_URL } from "../utils/constants";
+
+// Create axios instance
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// Request interceptor - add auth token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor - handle errors
+api.interceptors.response.use(
+  (response) => {
+    return response.data;
+  },
+  (error) => {
+    // Handle specific error cases
+    if (error.response) {
+      // Server responded with error
+      const message = error.response.data.message || "An error occurred";
+      
+      // Unauthorized - clear token and redirect to login
+      if (error.response.status === 401) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        window.location.href = "/user/auth";
+      }
+      
+      return Promise.reject(new Error(message));
+    } else if (error.request) {
+      // Request made but no response
+      return Promise.reject(new Error("No response from server"));
+    } else {
+      // Something else happened
+      return Promise.reject(error);
+    }
+  }
+);
+
+export default api;
